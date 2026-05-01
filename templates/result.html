@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Top 3 crop recommendations with profit and advisory insights." />
+  <title>🌿 Results — Smart Crop Advisor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  <!-- Chart.js from CDN — no install required -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<!-- ── HEADER ────────────────────────────────────────────── -->
+<header class="site-header">
+  <div class="header-inner">
+    <div class="brand">
+      <span class="brand-icon">🌾</span>
+      <div>
+        <h1 class="brand-title">Smart Crop Advisor</h1>
+        <p class="brand-sub">AI-Based Agriculture Recommendation System</p>
+      </div>
+    </div>
+    <nav class="nav-links">
+      <a href="/"       class="nav-link">🏠 Home</a>
+      <a href="/crops"  class="nav-link">🌱 All Crops</a>
+      <a href="/charts" class="nav-link">📊 Charts</a>
+    </nav>
+  </div>
+</header>
+
+<!-- ── RESULT HERO ───────────────────────────────────────── -->
+<section class="result-hero">
+  <div class="result-hero-inner">
+    <div class="result-badge">✅ Analysis Complete — Top 3 Crops Found</div>
+    <div class="result-crop-icon">{{ result.top3[0].icon }}</div>
+    <h2 class="result-crop-name">{{ result.top3[0].crop }}</h2>
+    <p class="result-sub">
+      #1 Recommended Crop &nbsp;·&nbsp; {{ result.top3[0].season }} Season
+      {% if result.city %}&nbsp;·&nbsp; 📍 {{ result.city }}{% endif %}
+    </p>
+    <div class="confidence-bar-wrap">
+      <span class="confidence-label">Model Confidence</span>
+      <div class="confidence-bar">
+        <div class="confidence-fill" data-width="{{ result.top3[0].confidence }}"></div>
+      </div>
+      <span class="confidence-pct">{{ result.top3[0].confidence }}%</span>
+    </div>
+  </div>
+</section>
+
+<!-- ── MAIN ──────────────────────────────────────────────── -->
+<main class="main-content">
+
+  <!-- ════ TOP 3 RECOMMENDATION CARDS ══════════════════════ -->
+  <div class="section-header-row">
+    <h3 class="section-title-lg">🏆 Top 3 Crop Recommendations</h3>
+    <span class="section-note">Ranked by AI confidence score</span>
+  </div>
+
+  <div class="top3-cards-grid">
+    {% for crop in result.top3 %}
+    <div class="rec-card {% if loop.index == 1 %}rec-gold{% elif loop.index == 2 %}rec-silver{% else %}rec-bronze{% endif %} reveal-card" data-delay="{{ loop.index0 * 150 }}">
+
+      <!-- Rank badge -->
+      <div class="rec-rank-badge">
+        {% if loop.index == 1 %}🥇{% elif loop.index == 2 %}🥈{% else %}🥉{% endif %}
+        #{{ crop.rank }}
+      </div>
+
+      <!-- Crop identity -->
+      <div class="rec-identity">
+        <span class="rec-icon">{{ crop.icon }}</span>
+        <div>
+          <div class="rec-name">{{ crop.crop }}</div>
+          <div class="rec-season">{{ crop.season }} · {{ crop.duration }}</div>
+        </div>
+      </div>
+
+      <!-- Confidence bar -->
+      <div class="rec-conf-wrap">
+        <div class="rec-conf-label">
+          <span>Confidence</span>
+          <span class="rec-conf-pct">{{ crop.confidence }}%</span>
+        </div>
+        <div class="rec-conf-bar">
+          <div class="rec-conf-fill {% if loop.index == 1 %}fill-gold{% elif loop.index == 2 %}fill-silver{% else %}fill-bronze{% endif %}"
+               data-width="{{ crop.confidence }}"></div>
+        </div>
+      </div>
+
+      <!-- Price & profit -->
+      <div class="rec-profit">
+        <div class="rec-price">
+          <span class="rec-price-amt">₹{{ "{:,}".format(crop.price) }}</span>
+          <span class="rec-price-unit">/ quintal (MSP)</span>
+        </div>
+        <div class="profit-bar-container">
+          <div class="profit-bar-bg">
+            <div class="profit-mini-fill" data-width="{{ crop.profit_pct }}"
+                 style="background: {% if crop.profit_pct > 65 %}#22c55e{% elif crop.profit_pct > 35 %}#f59e0b{% else %}#60a5fa{% endif %}">
+            </div>
+          </div>
+          <div class="profit-label-row">
+            <span class="profit-mini-pct">{{ crop.profit_pct }}% relative profit</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Meta chips -->
+      <div class="rec-meta">
+        <span class="meta-chip">💧 {{ crop.water }} water</span>
+        <span class="meta-chip">⏱️ {{ crop.duration }}</span>
+      </div>
+
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- ════ PROFIT COMPARISON CHART ═════════════════════════ -->
+  <div class="chart-section">
+    <div class="section-header-row">
+      <h3 class="section-title-lg">💰 Profit Comparison</h3>
+      <span class="section-note">MSP price (₹/quintal)</span>
+    </div>
+    <div class="chart-card-full">
+      <canvas id="profitChart" height="110"></canvas>
+    </div>
+
+    <div class="section-header-row" style="margin-top:1.5rem;">
+      <h3 class="section-title-lg">📊 Confidence Comparison</h3>
+      <span class="section-note">Model probability %</span>
+    </div>
+    <div class="chart-card-full">
+      <canvas id="confChart" height="110"></canvas>
+    </div>
+  </div>
+
+  <!-- ════ FERTILIZER RECOMMENDATIONS ══════════════════════ -->
+  <div class="advisory-section">
+    <h3 class="section-title-lg">💊 Fertilizer Recommendations</h3>
+    <div class="advisory-grid">
+      {% for crop in result.top3 %}
+      <div class="advisory-card fert-card">
+        <div class="adv-header">
+          <span class="adv-crop-icon">{{ crop.icon }}</span>
+          <div>
+            <div class="adv-crop-name">{{ crop.crop }}</div>
+            <div class="adv-sub">NPK Ratio: <strong>{{ crop.fertilizer.npk }}</strong></div>
+          </div>
+          <span class="adv-rank-pill">Rank #{{ crop.rank }}</span>
+        </div>
+        <p class="adv-tip">{{ crop.fertilizer.tip }}</p>
+        <div class="product-tags">
+          {% for prod in crop.fertilizer.products %}
+          <span class="product-tag">{{ prod }}</span>
+          {% endfor %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- ════ SOIL HEALTH ═════════════════════════════════════ -->
+  <div class="soil-section">
+    <h3 class="section-title-lg">🌍 Soil Health Analysis</h3>
+    <div class="soil-card">
+      <div class="soil-status-row">
+        <div class="soil-traffic-light {{ result.soil_health.color }}">
+          {% if result.soil_health.color == 'green' %}🌟{% elif result.soil_health.color == 'amber' %}⚠️{% else %}🚨{% endif %}
+        </div>
+        <div>
+          <div class="soil-status-label">Soil Status &bull; Score: {{ result.soil_health.score }}/8</div>
+          <div class="soil-status-val {{ result.soil_health.color }}-text">{{ result.soil_health.status }}</div>
+        </div>
+      </div>
+
+      <div class="soil-details">
+        <div class="soil-box problems-box">
+          <h4 class="soil-box-title">🚨 Detected Problems</h4>
+          <ul class="soil-tips">
+            {% for prob in result.soil_health.problems %}
+            <li>{{ prob }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+        
+        <div class="soil-box suggestions-box">
+          <h4 class="soil-box-title">💡 Actionable Suggestions</h4>
+          <ul class="soil-tips">
+            {% for sug in result.soil_health.suggestions %}
+            <li>{{ sug }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ CROP ROTATION ══════════════════════════════════ -->
+  <div class="rotation-section">
+    <h3 class="section-title-lg">🔄 Crop Rotation Suggestions</h3>
+    <div class="advisory-grid">
+      {% for crop in result.top3 %}
+      <div class="advisory-card rotation-card">
+        <div class="adv-header">
+          <span class="adv-crop-icon">{{ crop.icon }}</span>
+          <div>
+            <div class="adv-crop-name">After {{ crop.crop }}</div>
+            <div class="adv-sub">Plant next season:</div>
+          </div>
+        </div>
+        <div class="rotation-next">
+          {% for next_crop in crop.rotation.next %}
+          <span class="rotation-tag">{{ next_crop }}</span>
+          {% endfor %}
+        </div>
+        <p class="adv-tip">{{ crop.rotation.reason }}</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- ════ INPUT SUMMARY ══════════════════════════════════ -->
+  <div class="inputs-summary">
+    <h3 class="section-title-sm">📋 Your Input Summary</h3>
+    <div class="inputs-grid">
+      {% for key, val in result.inputs.items() %}
+      <div class="input-chip">
+        <span class="chip-key">{{ key }}</span>
+        <span class="chip-val">{{ val }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- ════ ACTION BUTTONS ════════════════════════════════ -->
+  <div class="action-row">
+    <a href="/"       class="action-btn secondary-btn">🔄 Try Another Prediction</a>
+    <a href="/crops"  class="action-btn secondary-btn">🌱 View All Crops</a>
+    <a href="/charts" class="action-btn primary-btn">📊 View Model Charts</a>
+  </div>
+
+</main>
+
+<!-- ── FOOTER ─────────────────────────────────────────────── -->
+<footer class="site-footer">
+  <p>🌾 Smart Crop Advisor v2 &nbsp;|&nbsp; Python · Flask · Scikit-learn · Chart.js</p>
+  <p class="footer-note">For educational / demo purposes. Always consult a local agricultural expert.</p>
+</footer>
+
+<script>
+/* ── Chart Data from Flask ───────────────────────────── */
+const chartLabels = {{ result.chart_labels | tojson }};
+const chartPrices = {{ result.chart_prices | tojson }};
+const chartConfs  = {{ result.chart_confs  | tojson }};
+
+const COLORS = ['#f59e0b', '#94a3b8', '#b45309'];
+const COLORS2 = ['#22c55e', '#4ade80', '#86efac'];
+
+/* ── Profit Bar Chart ────────────────────────────────── */
+new Chart(document.getElementById('profitChart'), {
+  type: 'bar',
+  data: {
+    labels: chartLabels,
+    datasets: [{
+      label: 'MSP Price (Rs/quintal)',
+      data: chartPrices,
+      backgroundColor: COLORS,
+      borderRadius: 8,
+      borderSkipped: false,
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: ctx => ` Rs ${ctx.parsed.y.toLocaleString()} / quintal`
+        }
+      }
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        grid: { color: 'rgba(255,255,255,0.06)' },
+        ticks: { color: '#9ca3af', callback: v => 'Rs ' + v.toLocaleString() }
+      },
+      x: { grid: { display: false }, ticks: { color: '#e8f5e9', font: { weight: '600' } } }
+    }
+  }
+});
+
+/* ── Confidence Bar Chart ────────────────────────────── */
+new Chart(document.getElementById('confChart'), {
+  type: 'bar',
+  data: {
+    labels: chartLabels,
+    datasets: [{
+      label: 'Confidence %',
+      data: chartConfs,
+      backgroundColor: COLORS2,
+      borderRadius: 8,
+      borderSkipped: false,
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: { label: ctx => ` ${ctx.parsed.y}% confidence` }
+      }
+    },
+    scales: {
+      y: {
+        beginAtZero: true, max: 100,
+        grid: { color: 'rgba(255,255,255,0.06)' },
+        ticks: { color: '#9ca3af', callback: v => v + '%' }
+      },
+      x: { grid: { display: false }, ticks: { color: '#e8f5e9', font: { weight: '600' } } }
+    }
+  }
+});
+
+/* ── Animate bars on page load ───────────────────────── */
+document.addEventListener('DOMContentLoaded', () => {
+
+  /* Confidence fill bar in hero */
+  const heroFill = document.querySelector('.confidence-fill');
+  if (heroFill) {
+    const w = heroFill.dataset.width;
+    heroFill.style.width = '0%';
+    setTimeout(() => { heroFill.style.transition = 'width 1s ease'; heroFill.style.width = w + '%'; }, 200);
+  }
+
+  /* Recommendation card fills */
+  document.querySelectorAll('[data-width]').forEach(el => {
+    const w = el.dataset.width;
+    el.style.width = '0%';
+    setTimeout(() => { el.style.transition = 'width 1s ease'; el.style.width = w + '%'; }, 400);
+  });
+
+  /* Stagger-reveal rec cards */
+  document.querySelectorAll('.reveal-card').forEach(card => {
+    const delay = parseInt(card.dataset.delay || 0);
+    card.style.opacity = '0';
+    card.style.transform = 'translateY(28px)';
+    setTimeout(() => {
+      card.style.transition = 'all 0.5s ease';
+      card.style.opacity = '1';
+      card.style.transform = 'translateY(0)';
+    }, 150 + delay);
+  });
+});
+</script>
+</body>
+</html>

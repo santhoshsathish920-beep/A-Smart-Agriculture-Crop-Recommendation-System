@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="AI-powered crop recommendation system — enter soil and weather data to find your best crop." />
+  <title>🌿 Smart Crop Advisor v2 — AI Agriculture System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+
+<!-- ── HEADER ────────────────────────────────────────────── -->
+<header class="site-header">
+  <div class="header-inner">
+    <div class="brand">
+      <span class="brand-icon">🌾</span>
+      <div>
+        <h1 class="brand-title">Smart Crop Advisor</h1>
+        <p class="brand-sub">AI-Based Agriculture Recommendation System</p>
+      </div>
+    </div>
+    <nav class="nav-links">
+      <a href="/"      class="nav-link active">🏠 Home</a>
+      <a href="/crops" class="nav-link">🌱 All Crops</a>
+      <a href="/charts" class="nav-link">📊 Charts</a>
+    </nav>
+  </div>
+</header>
+
+<!-- ── HERO ──────────────────────────────────────────────── -->
+<section class="hero">
+  <div class="hero-content">
+    <div class="hero-badge">🤖 Random Forest ML · Top-3 Predictions · Live Weather</div>
+    <h2 class="hero-title">Find Your Perfect Crop</h2>
+    <p class="hero-desc">
+      Enter soil data and optionally <strong>auto-fetch weather</strong> for your city.
+      Our AI recommends the <strong>Top 3 crops</strong> with confidence scores,
+      profit rankings, fertilizer tips and crop rotation advice.
+    </p>
+  </div>
+  <div class="hero-stats">
+    <div class="stat-card">
+      <span class="stat-num">{{ all_crops|length }}</span>
+      <span class="stat-label">Crops Supported</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-num">Top 3</span>
+      <span class="stat-label">Predictions</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-num">Live</span>
+      <span class="stat-label">Weather Data</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-num">95%+</span>
+      <span class="stat-label">Accuracy</span>
+    </div>
+  </div>
+</section>
+
+<!-- ── FORM ──────────────────────────────────────────────── -->
+<main class="main-content">
+
+  {% if error %}
+  <div class="alert alert-error">⚠️ {{ error }}</div>
+  {% endif %}
+
+  <form id="crop-form" action="/predict" method="POST" class="form-card" novalidate>
+
+    <!-- ═══ WEATHER AUTO-FILL PANEL ═══════════════════════ -->
+    <div class="weather-panel" id="weather-panel">
+      <div class="section-header">
+        <span class="section-icon">🌦️</span>
+        <div>
+          <h3 class="section-title">Weather Auto-Fill <span class="badge-new">NEW</span></h3>
+          <p class="section-desc">Enter your city to auto-fill Temperature &amp; Humidity from live data</p>
+        </div>
+      </div>
+      <div class="weather-input-row">
+        <div class="city-input-wrap">
+          <input type="text" id="city-input" name="city"
+                 class="input-field city-field"
+                 placeholder="e.g. Chennai, Delhi, Mumbai"
+                 autocomplete="off" />
+        </div>
+        <button type="button" id="fetch-weather-btn" class="weather-btn" onclick="fetchWeather()">
+          <span id="weather-btn-text">🌡️ Fetch Weather</span>
+        </button>
+      </div>
+
+      <!-- Weather result card (hidden until data loads) -->
+      <div id="weather-card" class="weather-card hidden">
+        <img id="weather-icon" src="" alt="weather icon" class="w-icon" />
+        <div class="w-info">
+          <span id="w-city" class="w-city"></span>
+          <span id="w-desc" class="w-desc"></span>
+        </div>
+        <div class="w-vals">
+          <div class="w-val-item">
+            <span class="w-val-num" id="w-temp"></span>
+            <span class="w-val-unit">°C</span>
+          </div>
+          <div class="w-val-sep"></div>
+          <div class="w-val-item">
+            <span class="w-val-num" id="w-hum"></span>
+            <span class="w-val-unit">%</span>
+          </div>
+        </div>
+      </div>
+      <div id="weather-error" class="weather-error hidden"></div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ═══ SOIL NUTRIENTS ════════════════════════════════ -->
+    <div class="form-section">
+      <div class="section-header">
+        <span class="section-icon">🧪</span>
+        <div>
+          <h3 class="section-title">Soil Nutrients</h3>
+          <p class="section-desc">Enter NPK values from your soil test report (mg/kg)</p>
+        </div>
+      </div>
+      <div class="input-grid">
+
+        <div class="input-group">
+          <label for="nitrogen" class="input-label">
+            Nitrogen (N) <span class="unit-badge">mg/kg</span>
+          </label>
+          <input type="number" id="nitrogen" name="nitrogen"
+                 class="input-field" placeholder="e.g. 90" step="0.1" required />
+          <span class="input-hint" id="hint-nitrogen">Range: 0 – 140</span>
+        </div>
+
+        <div class="input-group">
+          <label for="phosphorus" class="input-label">
+            Phosphorus (P) <span class="unit-badge">mg/kg</span>
+          </label>
+          <input type="number" id="phosphorus" name="phosphorus"
+                 class="input-field" placeholder="e.g. 42" step="0.1" required />
+          <span class="input-hint" id="hint-phosphorus">Range: 5 – 145</span>
+        </div>
+
+        <div class="input-group">
+          <label for="potassium" class="input-label">
+            Potassium (K) <span class="unit-badge">mg/kg</span>
+          </label>
+          <input type="number" id="potassium" name="potassium"
+                 class="input-field" placeholder="e.g. 43" step="0.1" required />
+          <span class="input-hint" id="hint-potassium">Range: 5 – 205</span>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ═══ CLIMATE CONDITIONS ════════════════════════════ -->
+    <div class="form-section">
+      <div class="section-header">
+        <span class="section-icon">🌤️</span>
+        <div>
+          <h3 class="section-title">Climate Conditions</h3>
+          <p class="section-desc">Auto-filled from weather, or enter manually</p>
+        </div>
+      </div>
+      <div class="input-grid">
+
+        <div class="input-group">
+          <label for="temperature" class="input-label">
+            Temperature <span class="unit-badge">°C</span>
+          </label>
+          <input type="number" id="temperature" name="temperature"
+                 class="input-field" placeholder="e.g. 25.5" step="0.1" required />
+          <span class="input-hint">Range: 8°C – 44°C</span>
+        </div>
+
+        <div class="input-group">
+          <label for="humidity" class="input-label">
+            Humidity <span class="unit-badge">%</span>
+          </label>
+          <input type="number" id="humidity" name="humidity"
+                 class="input-field" placeholder="e.g. 80" step="0.1" required />
+          <span class="input-hint">Range: 14% – 100%</span>
+        </div>
+
+        <div class="input-group">
+          <label for="ph" class="input-label">
+            pH Value <span class="unit-badge">pH</span>
+          </label>
+          <input type="number" id="ph" name="ph"
+                 class="input-field" placeholder="e.g. 6.5" step="0.01" required />
+          <span class="input-hint" id="hint-ph">Range: 3.5 – 9.0</span>
+        </div>
+
+        <div class="input-group">
+          <label for="rainfall" class="input-label">
+            Rainfall <span class="unit-badge">mm</span>
+          </label>
+          <input type="number" id="rainfall" name="rainfall"
+                 class="input-field" placeholder="e.g. 200" step="0.1" required />
+          <span class="input-hint">Range: 20 – 300mm</span>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ═══ QUICK FILL PRESETS ════════════════════════════ -->
+    <div class="presets">
+      <div class="preset-header">
+        <span class="preset-label">📋 Quick Fill:</span>
+        <!-- Toggle button: rendered by JS, hides when not needed -->
+        <button type="button" id="toggle-crops-btn" class="toggle-crops-btn" onclick="toggleCropList()">Show All Crops ▼</button>
+      </div>
+      <!-- JS renders crop buttons here dynamically -->
+      <div id="preset-buttons" class="preset-buttons-wrap"></div>
+    </div>
+
+    <button type="submit" class="submit-btn" id="submit-btn">
+      <!-- Spinner shown while loading (hidden by default via CSS) -->
+      <span class="btn-spinner" id="btn-spinner"></span>
+      <span class="btn-icon" id="btn-icon">🔍</span>
+      <span class="btn-text" id="btn-text">Analyse &amp; Get Top 3 Recommendations</span>
+    </button>
+
+  </form>
+
+  <!-- ── ALL CROPS DYNAMIC DISPLAY ──────────────────────── -->
+  <div class="all-crops-strip">
+    <p class="strip-label">🌱 Supported Crops:</p>
+    <div class="crops-chips">
+      {% for crop in all_crops %}
+      <span class="crop-chip">{{ crop }}</span>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- ── INFO CARDS ──────────────────────────────────────── -->
+  <div class="info-grid">
+    <div class="info-card">
+      <div class="info-icon">🏆</div>
+      <h4>Top 3 Predictions</h4>
+      <p>Get ranked recommendations with per-crop confidence scores, not just the #1 pick.</p>
+    </div>
+    <div class="info-card">
+      <div class="info-icon">🌡️</div>
+      <h4>Live Weather</h4>
+      <p>Type your city name and auto-fetch current temperature and humidity instantly.</p>
+    </div>
+    <div class="info-card">
+      <div class="info-icon">💊</div>
+      <h4>Fertilizer Advice</h4>
+      <p>Get exact NPK ratios and fertilizer product recommendations for each crop.</p>
+    </div>
+    <div class="info-card">
+      <div class="info-icon">🔄</div>
+      <h4>Crop Rotation</h4>
+      <p>Receive scientifically backed next-season crop rotation suggestions per crop.</p>
+    </div>
+  </div>
+
+</main>
+
+<!-- ── FOOTER ─────────────────────────────────────────────── -->
+<footer class="site-footer">
+  <p>🌾 Smart Crop Advisor v2 &nbsp;|&nbsp; Python · Flask · Scikit-learn · OpenWeatherMap</p>
+  <p class="footer-note">For educational / demo purposes. Always consult a local agricultural expert.</p>
+</footer>
+
+<script>
+/* ════════════════════════════════════════════════════════════
+   PRESET DATA — All 22 crops with full soil + climate values
+   ════════════════════════════════════════════════════════════ */
+const presets = {
+  rice:        { nitrogen:90,  phosphorus:42,  potassium:43,  temperature:20.87, humidity:82,  ph:6.5,  rainfall:202.9, icon:'🌾' },
+  maize:       { nitrogen:40,  phosphorus:70,  potassium:35,  temperature:25.2,  humidity:70,  ph:6.0,  rainfall:80.5,  icon:'🌽' },
+  coffee:      { nitrogen:80,  phosphorus:47,  potassium:50,  temperature:23.0,  humidity:60,  ph:7.0,  rainfall:100.0, icon:'☕' },
+  apple:       { nitrogen:15,  phosphorus:10,  potassium:39,  temperature:27.0,  humidity:92,  ph:5.5,  rainfall:120.0, icon:'🍏' },
+  cotton:      { nitrogen:40,  phosphorus:60,  potassium:55,  temperature:22.0,  humidity:85,  ph:5.5,  rainfall:140.0, icon:'🌸' },
+  banana:      { nitrogen:21,  phosphorus:65,  potassium:15,  temperature:22.0,  humidity:80,  ph:5.5,  rainfall:111.0, icon:'🍌' },
+  chickpea:    { nitrogen:25,  phosphorus:60,  potassium:38,  temperature:20.1,  humidity:90,  ph:7.1,  rainfall:75.2,  icon:'🫘' },
+  kidneybeans: { nitrogen:41,  phosphorus:37,  potassium:0,   temperature:21.7,  humidity:88,  ph:5.8,  rainfall:160.3, icon:'🫘' },
+  pigeonpeas:  { nitrogen:60,  phosphorus:55,  potassium:45,  temperature:21.0,  humidity:90,  ph:5.5,  rainfall:280.0, icon:'🫘' },
+  mothbeans:   { nitrogen:27,  phosphorus:83,  potassium:38,  temperature:23.0,  humidity:50,  ph:5.9,  rainfall:50.2,  icon:'🫘' },
+  mungbean:    { nitrogen:2,   phosphorus:42,  potassium:34,  temperature:27.0,  humidity:61,  ph:6.2,  rainfall:52.3,  icon:'🫘' },
+  blackgram:   { nitrogen:18,  phosphorus:132, potassium:20,  temperature:25.0,  humidity:65,  ph:7.2,  rainfall:25.0,  icon:'🫘' },
+  lentil:      { nitrogen:25,  phosphorus:46,  potassium:45,  temperature:23.5,  humidity:60,  ph:6.8,  rainfall:65.0,  icon:'🫘' },
+  pomegranate: { nitrogen:20,  phosphorus:107, potassium:40,  temperature:39.0,  humidity:90,  ph:5.8,  rainfall:105.0, icon:'🍎' },
+  mango:       { nitrogen:100, phosphorus:20,  potassium:35,  temperature:37.5,  humidity:90,  ph:5.8,  rainfall:120.0, icon:'🥭' },
+  grapes:      { nitrogen:22,  phosphorus:132, potassium:13,  temperature:35.0,  humidity:90,  ph:5.5,  rainfall:110.0, icon:'🍇' },
+  watermelon:  { nitrogen:15,  phosphorus:10,  potassium:40,  temperature:24.0,  humidity:85,  ph:6.0,  rainfall:103.0, icon:'🍉' },
+  muskmelon:   { nitrogen:22,  phosphorus:15,  potassium:36,  temperature:35.0,  humidity:85,  ph:5.8,  rainfall:50.0,  icon:'🍈' },
+  orange:      { nitrogen:20,  phosphorus:20,  potassium:40,  temperature:24.0,  humidity:95,  ph:6.5,  rainfall:100.0, icon:'🍊' },
+  papaya:      { nitrogen:20,  phosphorus:80,  potassium:40,  temperature:25.0,  humidity:90,  ph:5.5,  rainfall:200.0, icon:'🧡' },
+  coconut:     { nitrogen:38,  phosphorus:35,  potassium:35,  temperature:38.5,  humidity:50,  ph:5.5,  rainfall:40.0,  icon:'🥥' },
+  jute:        { nitrogen:5,   phosphorus:80,  potassium:40,  temperature:23.0,  humidity:82,  ph:6.0,  rainfall:210.0, icon:'🌿' },
+};
+
+/* ── CROP TOGGLE: Show 6 by default, expand to all ──────── */
+const DEFAULT_COUNT = 6;         // how many crops shown by default
+let   showingAll   = false;      // toggle state
+let   activePreset = null;       // currently highlighted crop key
+
+/**
+ * Renders crop preset buttons into #preset-buttons.
+ * @param {boolean} showAll - true = render all crops, false = first 6 only
+ */
+function renderCropButtons(showAll) {
+  const container = document.getElementById('preset-buttons');
+  const allKeys   = Object.keys(presets);
+  const keys      = showAll ? allKeys : allKeys.slice(0, DEFAULT_COUNT);
+
+  /* Build buttons HTML */
+  container.innerHTML = keys.map(key => {
+    const p         = presets[key];
+    const isActive  = key === activePreset ? ' preset-btn-active' : '';
+    const label     = key.charAt(0).toUpperCase() + key.slice(1);  // capitalise
+    return `<button type="button" class="preset-btn${isActive}"
+              id="preset-${key}"
+              onclick="fillPreset('${key}')">
+              ${p.icon} ${label}
+            </button>`;
+  }).join('');
+
+  /* Animate container height for smooth expand/collapse */
+  container.style.maxHeight = showAll ? (container.scrollHeight + 200) + 'px' : '';
+}
+
+/**
+ * Toggle between showing 6 crops and all crops.
+ * Updates the button label and re-renders the list.
+ */
+function toggleCropList() {
+  showingAll = !showingAll;
+  const btn  = document.getElementById('toggle-crops-btn');
+  btn.textContent = showingAll ? 'Show Less ▲' : 'Show All Crops ▼';
+  btn.classList.toggle('toggle-active', showingAll);
+  renderCropButtons(showingAll);
+}
+
+/**
+ * Fill all form fields from preset data.
+ * Highlights the selected button and clears any previous selection.
+ * @param {string} crop - lowercase crop key (e.g. 'rice')
+ */
+function fillPreset(crop) {
+  const vals = presets[crop];
+  if (!vals) return;
+
+  /* Fill every input field that has a matching key in presets */
+  ['nitrogen','phosphorus','potassium','temperature','humidity','ph','rainfall'].forEach(key => {
+    const el = document.getElementById(key);
+    if (el) {
+      el.value = vals[key];
+      el.classList.add('filled');
+      /* Brief flash animation to show the field was updated */
+      el.classList.add('field-flash');
+      setTimeout(() => el.classList.remove('field-flash'), 600);
+    }
+  });
+
+  /* Update active highlight */
+  activePreset = crop;
+  renderCropButtons(showingAll);   // re-render to update active class
+}
+
+/* Initial render — show first 6 on page load */
+renderCropButtons(false);
+
+
+/* ════════════════════════════════════════════════════════════
+   WEATHER FETCH — auto-fills temp & humidity, clears soil fields
+   ════════════════════════════════════════════════════════════ */
+async function fetchWeather() {
+  const city = document.getElementById('city-input').value.trim();
+  if (!city) { showWeatherError('Please enter a city name.'); return; }
+
+  const btn    = document.getElementById('fetch-weather-btn');
+  const btnTxt = document.getElementById('weather-btn-text');
+  btn.disabled    = true;
+  btnTxt.textContent = '⏳ Fetching…';
+
+  hideWeatherCard();
+  hideWeatherError();
+
+  try {
+    const resp = await fetch(`/api/weather?city=${encodeURIComponent(city)}`);
+    const data = await resp.json();
+
+    if (data.success) {
+      /* ── CRITICAL FIX: clear stale soil fields before filling ── */
+      clearSoilFields();
+
+      /* Auto-fill temperature and humidity from live weather */
+      setField('temperature', data.temperature);
+      setField('humidity',    data.humidity);
+
+      /* Show weather result card */
+      document.getElementById('weather-icon').src          = data.icon_url;
+      document.getElementById('w-city').textContent        = `${data.city}, ${data.country}`;
+      document.getElementById('w-desc').textContent        = data.description;
+      document.getElementById('w-temp').textContent        = data.temperature;
+      document.getElementById('w-hum').textContent         = data.humidity;
+      document.getElementById('weather-card').classList.remove('hidden');
+
+      /* Clear active preset since weather overrides climate fields */
+      activePreset = null;
+      renderCropButtons(showingAll);
+    } else {
+      showWeatherError(data.error || 'Could not fetch weather.');
+    }
+  } catch (e) {
+    showWeatherError('Network error. Check your connection.');
+  } finally {
+    btn.disabled       = false;
+    btnTxt.textContent = '🌡️ Fetch Weather';
+  }
+}
+
+/**
+ * Clear the 5 soil / manual input fields so stale data
+ * does not contaminate a weather-assisted prediction.
+ */
+function clearSoilFields() {
+  ['nitrogen', 'phosphorus', 'potassium', 'ph', 'rainfall'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.value = '';
+      el.classList.remove('filled');
+    }
+  });
+}
+
+/* Helpers: set, hide, show weather UI elements */
+function setField(id, val) {
+  const el = document.getElementById(id);
+  if (el) { el.value = val; el.classList.add('filled'); }
+}
+function hideWeatherCard()  { document.getElementById('weather-card').classList.add('hidden'); }
+function hideWeatherError() { document.getElementById('weather-error').classList.add('hidden'); }
+function showWeatherError(msg) {
+  const el        = document.getElementById('weather-error');
+  el.textContent  = '⚠️ ' + msg;
+  el.classList.remove('hidden');
+}
+
+/* Enter key in city field triggers fetch */
+document.getElementById('city-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); fetchWeather(); }
+});
+
+
+/* ════════════════════════════════════════════════════════════
+   SUBMIT BUTTON — Friendly Validation & Spinner Logic
+   ════════════════════════════════════════════════════════════ */
+document.getElementById('crop-form').addEventListener('submit', function (e) {
+  
+  const fields = [
+    { id: 'nitrogen', name: 'Nitrogen' },
+    { id: 'phosphorus', name: 'Phosphorus' },
+    { id: 'potassium', name: 'Potassium' },
+    { id: 'temperature', name: 'Temperature' },
+    { id: 'humidity', name: 'Humidity' },
+    { id: 'ph', name: 'pH Value' },
+    { id: 'rainfall', name: 'Rainfall' }
+  ];
+
+  let isValid = true;
+  let firstErrorField = null;
+
+  fields.forEach(field => {
+    const el = document.getElementById(field.id);
+    const val = el.value.trim();
+    
+    // Clear previous errors
+    el.classList.remove('input-error');
+    const existingError = document.getElementById(`error-${field.id}`);
+    if (existingError) existingError.remove();
+
+    let errorMsg = '';
+    if (val === '') {
+      errorMsg = `Please enter ${field.name} value`;
+      isValid = false;
+    } else if (isNaN(parseFloat(val))) {
+      errorMsg = `Please enter numbers only (no text)`;
+      isValid = false;
+    }
+
+    if (errorMsg) {
+      el.classList.add('input-error');
+      const errorMsgEl = document.createElement('div');
+      errorMsgEl.id = `error-${field.id}`;
+      errorMsgEl.className = 'field-error-msg';
+      errorMsgEl.innerHTML = `⚠️ ${errorMsg}`;
+      el.parentNode.appendChild(errorMsgEl);
+
+      if (!firstErrorField) firstErrorField = el;
+    }
+  });
+
+  if (!isValid) {
+    e.preventDefault(); // Stop submission
+    // Show a general alert box message as requested
+    const mainAlert = document.createElement('div');
+    mainAlert.className = 'alert alert-error';
+    mainAlert.innerHTML = '⚠️ Please enter valid numbers for all fields.';
+    
+    // remove existing main alert if any
+    const existingMainAlert = document.querySelector('.main-content > .alert-error');
+    if (existingMainAlert) existingMainAlert.remove();
+    
+    document.querySelector('.main-content').prepend(mainAlert);
+    
+    if (firstErrorField) {
+      firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      firstErrorField.focus();
+    }
+    return;
+  }
+
+  // Show loading state
+  const btn     = document.getElementById('submit-btn');
+  const spinner = document.getElementById('btn-spinner');
+  const icon    = document.getElementById('btn-icon');
+  const text    = document.getElementById('btn-text');
+
+  btn.disabled       = true;
+  btn.classList.add('loading');
+  spinner.style.display = 'inline-block';
+  icon.style.display    = 'none';
+  text.textContent      = 'Analysing…';
+});
+
+/* ════════════════════════════════════════════════════════════
+   REAL-TIME SOIL INTELLIGENCE — Smart Input Feedback
+   ════════════════════════════════════════════════════════════ */
+const soilIntelligence = {
+  nitrogen: {
+    low: 20, high: 140,
+    msgLow: "⚠️ Nitrogen low — plants may show yellow leaves and stunted growth",
+    msgHigh: "🚨 Nitrogen high — may burn roots and reduce crop yield",
+    msgOpt: "✅ Nitrogen is optimal",
+    default: "Range: 0 – 140"
+  },
+  phosphorus: {
+    low: 10, high: 145,
+    msgLow: "⚠️ Phosphorus low — weak root development and delayed maturity",
+    msgHigh: "🚨 Phosphorus high — blocks micronutrient absorption like zinc and iron",
+    msgOpt: "✅ Phosphorus is optimal",
+    default: "Range: 5 – 145"
+  },
+  potassium: {
+    low: 20, high: 205,
+    msgLow: "⚠️ Potassium low — weak plant resistance to disease and drought",
+    msgHigh: "🚨 Potassium high — may imbalance magnesium and calcium uptake",
+    msgOpt: "✅ Potassium is optimal",
+    default: "Range: 5 – 205"
+  },
+  ph: {
+    low: 6.0, high: 7.5,
+    msgLow: "⚠️ pH acidic — nutrient availability decreases, especially phosphorus",
+    msgHigh: "🚨 pH alkaline — micronutrient deficiencies (iron, zinc)",
+    msgOpt: "✅ pH is optimal",
+    default: "Range: 3.5 – 9.0"
+  }
+};
+
+['nitrogen', 'phosphorus', 'potassium', 'ph'].forEach(id => {
+  const el = document.getElementById(id);
+  const hint = document.getElementById(`hint-${id}`);
+  
+  el.addEventListener('input', () => {
+    const val = parseFloat(el.value);
+    const config = soilIntelligence[id];
+    
+    // Reset classes
+    el.classList.remove('input-warning-low', 'input-warning-high', 'input-warning-opt');
+    hint.className = 'input-hint'; // reset to base
+    
+    if (isNaN(val)) {
+      hint.textContent = config.default;
+      return;
+    }
+    
+    if (val < config.low) {
+      el.classList.add('input-warning-low');
+      hint.classList.add('text-warning-low');
+      hint.textContent = config.msgLow;
+    } else if (val > config.high) {
+      el.classList.add('input-warning-high');
+      hint.classList.add('text-warning-high');
+      hint.textContent = config.msgHigh;
+    } else {
+      el.classList.add('input-warning-opt');
+      hint.classList.add('text-warning-opt');
+      hint.textContent = config.msgOpt;
+    }
+  });
+});
+
+/* Fix stuck "Analysing..." state when navigating back using bfcache */
+window.addEventListener('pageshow', (event) => {
+  if (event.persisted || (window.performance && window.performance.navigation.type === 2)) {
+    const btn     = document.getElementById('submit-btn');
+    const spinner = document.getElementById('btn-spinner');
+    const icon    = document.getElementById('btn-icon');
+    const text    = document.getElementById('btn-text');
+
+    if (btn) {
+      btn.disabled = false;
+      btn.classList.remove('loading');
+      spinner.style.display = 'none';
+      icon.style.display = 'inline-block';
+      text.textContent = 'Analyse & Get Top 3 Recommendations';
+    }
+  }
+});
+
+
+/* ════════════════════════════════════════════════════════════
+   INPUT FOCUS & REAL-TIME VALIDATION UX
+   ════════════════════════════════════════════════════════════ */
+document.querySelectorAll('.input-field').forEach(input => {
+  input.addEventListener('focus', () => input.parentElement.classList.add('focused'));
+  input.addEventListener('blur',  () => input.parentElement.classList.remove('focused'));
+  
+  input.addEventListener('input', () => {
+    input.classList.toggle('filled', input.value !== '');
+    
+    // Skip real-time validation for non-numeric fields like city
+    if (input.id === 'city-input') return;
+
+    const val = input.value.trim();
+    let errorEl = document.getElementById(`error-${input.id}`);
+    
+    if (val === '') {
+      // Only show "empty" error if it was already flagged by submit
+      if (input.classList.contains('input-error') || errorEl) {
+        input.classList.add('input-error');
+        if (!errorEl) {
+           errorEl = document.createElement('div');
+           errorEl.id = `error-${input.id}`;
+           errorEl.className = 'field-error-msg';
+           input.parentNode.appendChild(errorEl);
+        }
+        errorEl.style.opacity = '1';
+        errorEl.innerHTML = `⚠️ Please enter a value`;
+      }
+    } else if (isNaN(parseFloat(val))) {
+      // Invalid number entered: show error immediately
+      input.classList.add('input-error');
+      if (!errorEl) {
+         errorEl = document.createElement('div');
+         errorEl.id = `error-${input.id}`;
+         errorEl.className = 'field-error-msg';
+         input.parentNode.appendChild(errorEl);
+      }
+      errorEl.style.opacity = '1';
+      errorEl.innerHTML = `⚠️ Please enter numbers only (no text)`;
+    } else {
+      // Valid input: remove error instantly
+      input.classList.remove('input-error');
+      if (errorEl) {
+        errorEl.style.opacity = '0';
+        setTimeout(() => { if(errorEl.parentNode) errorEl.remove(); }, 200);
+      }
+      
+      // If all fields are fixed, smoothly remove the main top alert
+      setTimeout(() => {
+        if (!document.querySelector('.input-error')) {
+          const mainAlert = document.querySelector('.main-content > .alert-error');
+          if (mainAlert) {
+              mainAlert.style.transition = 'opacity 0.2s ease';
+              mainAlert.style.opacity = '0';
+              setTimeout(() => { if(mainAlert.parentNode) mainAlert.remove(); }, 200);
+          }
+        }
+      }, 210);
+    }
+  });
+});
+</script>
+</body>
+</html>

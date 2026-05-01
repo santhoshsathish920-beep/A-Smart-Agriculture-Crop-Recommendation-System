@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>📊 Model Charts — Smart Crop Advisor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+
+<header class="site-header">
+  <div class="header-inner">
+    <div class="brand">
+      <span class="brand-icon">🌾</span>
+      <div>
+        <h1 class="brand-title">Smart Crop Advisor</h1>
+        <p class="brand-sub">AI-Based Agriculture Recommendation System</p>
+      </div>
+    </div>
+    <nav class="nav-links">
+      <a href="/" class="nav-link">🏠 Home</a>
+      <a href="/charts" class="nav-link active">📊 Charts</a>
+    </nav>
+  </div>
+</header>
+
+<section class="hero" style="padding-bottom: 2rem;">
+  <div class="hero-content">
+    <div class="hero-badge">📊 Model Visualisations</div>
+    <h2 class="hero-title">Data Insights &amp; Model Performance</h2>
+    <p class="hero-desc">
+      These charts were generated during model training. They explain how the
+      Random Forest model weighs each feature and how accurate it is across all 22 crops.
+    </p>
+  </div>
+</section>
+
+<main class="main-content">
+  <div class="charts-grid">
+
+    <div class="chart-card">
+      <div class="chart-title">
+        <span>📈 Feature Importance</span>
+        <span class="chart-badge">Training Analysis</span>
+      </div>
+      <p class="chart-desc">
+        Rainfall and Humidity are the strongest predictors, followed closely by Potassium (K).
+        The model assigns weight to each feature based on how much it reduces prediction error.
+      </p>
+      <img src="{{ url_for('static', filename='charts/feature_importance.png') }}"
+           alt="Feature Importance Chart"
+           class="chart-img" id="chart-fi" loading="lazy" />
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">
+        <span>🌾 Crop Distribution</span>
+        <span class="chart-badge">Dataset Overview</span>
+      </div>
+      <p class="chart-desc">
+        Shows the number of training samples for each crop class.
+        A balanced dataset ensures the model doesn't favour any particular crop.
+      </p>
+      <img src="{{ url_for('static', filename='charts/crop_distribution.png') }}"
+           alt="Crop Distribution Chart"
+           class="chart-img" id="chart-cd" loading="lazy" />
+    </div>
+
+    <div class="chart-card full-width">
+      <div class="chart-title">
+        <span>🎯 Confusion Matrix</span>
+        <span class="chart-badge">Model Accuracy</span>
+      </div>
+      <p class="chart-desc">
+        The confusion matrix shows predicted vs. actual crops on the test set.
+        A perfect model would show all values along the diagonal.
+        High diagonal values indicate accurate predictions per class.
+      </p>
+      <img src="{{ url_for('static', filename='charts/confusion_matrix.png') }}"
+           alt="Confusion Matrix"
+           class="chart-img confusion-img" id="chart-cm" loading="lazy" />
+    </div>
+
+  </div>
+
+  <div class="action-row">
+    <a href="/" class="action-btn primary-btn">🔍 Make a Prediction</a>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <p>🌾 Smart Crop Advisor &nbsp;|&nbsp; Built with Python, Flask &amp; Scikit-learn</p>
+  <p class="footer-note">For educational / demonstration purposes. Always consult a local agricultural expert.</p>
+</footer>
+
+<script>
+  document.querySelectorAll('.chart-card').forEach((el, i) => {
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(30px)';
+    setTimeout(() => {
+      el.style.transition = 'all 0.5s ease';
+      el.style.opacity = '1';
+      el.style.transform = 'translateY(0)';
+    }, 100 + i * 200);
+  });
+</script>
+</body>
+</html>

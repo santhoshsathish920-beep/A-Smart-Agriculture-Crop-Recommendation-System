@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🌱 All Crops — Smart Crop Advisor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+
+<header class="site-header">
+  <div class="header-inner">
+    <div class="brand">
+      <span class="brand-icon">🌾</span>
+      <div>
+        <h1 class="brand-title">Smart Crop Advisor</h1>
+        <p class="brand-sub">AI-Based Agriculture Recommendation System</p>
+      </div>
+    </div>
+    <nav class="nav-links">
+      <a href="/"       class="nav-link">🏠 Home</a>
+      <a href="/crops"  class="nav-link active">🌱 All Crops</a>
+      <a href="/charts" class="nav-link">📊 Charts</a>
+    </nav>
+  </div>
+</header>
+
+<section class="hero" style="padding-bottom:1.5rem">
+  <div class="hero-content">
+    <div class="hero-badge">🌱 Dynamic Crop Database</div>
+    <h2 class="hero-title">All {{ crops|length }} Supported Crops</h2>
+    <p class="hero-desc">
+      Live data from <code>config.py</code> — prices, seasons, and water requirements.
+      Sorted by profitability (highest MSP first).
+    </p>
+  </div>
+</section>
+
+<main class="main-content">
+  <div class="crops-table-wrap">
+    <table class="crops-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Crop</th>
+          <th>Season</th>
+          <th>MSP Price</th>
+          <th>Water Need</th>
+          <th>Duration</th>
+          <th>Profit Rank</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for crop in crops %}
+        <tr class="crop-row">
+          <td class="rank-col">{{ loop.index }}</td>
+          <td class="name-col">
+            <span class="crop-tbl-icon">{{ crop.icon }}</span>
+            <strong>{{ crop.name }}</strong>
+          </td>
+          <td><span class="season-chip">{{ crop.season }}</span></td>
+          <td class="price-col">₹{{ "{:,}".format(crop.price) }} <span class="unit-sm">{{ crop.price_unit }}</span></td>
+          <td>
+            <span class="water-badge water-{{ crop.water | lower }}">{{ crop.water }}</span>
+          </td>
+          <td class="dur-col">{{ crop.duration }}</td>
+          <td>
+            {% set pct = (crop.price / 18000 * 100)|int %}
+            <div class="tbl-profit-bar">
+              <div class="tbl-profit-fill"
+                   style="width:{{ pct }}%; background:{% if pct>65%}#22c55e{% elif pct>35%}#f59e0b{% else %}#60a5fa{% endif %}">
+              </div>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="action-row">
+    <a href="/" class="action-btn primary-btn">🔍 Make a Prediction</a>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <p>🌾 Smart Crop Advisor &nbsp;|&nbsp; Python · Flask · Scikit-learn</p>
+  <p class="footer-note">For educational / demo purposes. Always consult a local agricultural expert.</p>
+</footer>
+</body>
+</html>
